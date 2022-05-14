@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-interface IUser {
+export interface IUser {
     userName: string;
     password: string;
     email: string;
@@ -23,4 +23,4 @@ const userSchema = new mongoose.Schema<IUser>({
 
 const userModel = mongoose.model<IUser>('User', userSchema);
 
-export { userModel as UserModel };
+export { userModel as User };
