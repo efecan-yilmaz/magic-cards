@@ -1,9 +1,9 @@
-import { GraphQLObjectType, GraphQLString, GraphQLList } from "graphql";
+import { GraphQLObjectType, GraphQLString } from "graphql";
 import bcrypt from 'bcrypt';
 import { v4 as uidGen } from 'uuid';
 import jwt from 'jsonwebtoken';
 
-import { User, IUser } from '../../User';
+import { User } from '../../User';
 import { ErrorType } from "../Errors";
 
 const TUser: GraphQLObjectType<any, any> = new GraphQLObjectType({
@@ -16,27 +16,46 @@ const TUser: GraphQLObjectType<any, any> = new GraphQLObjectType({
     })
 });
 
-export const UserQuery: GraphQLObjectType<any, any> = new GraphQLObjectType({
-    name: 'UserQuery',
-    fields: {
-        login: {
-            type: new GraphQLList(TUser),
-            args: {
-                email: { type: GraphQLString },
-                password: { type: GraphQLString }
-            },
-            resolve: (root, { email, password }) => {
-
-            }
-        }
-    }
-});
-
 const TToken: GraphQLObjectType<any, any> = new GraphQLObjectType({
     name:'Token',
     fields: () => ({
         token: { type: GraphQLString }
     })
+});
+
+export const UserQuery: GraphQLObjectType<any, any> = new GraphQLObjectType({
+    name: 'UserQuery',
+    fields: {
+        login: {
+            type: TToken,
+            args: {
+                email: { type: GraphQLString },
+                password: { type: GraphQLString }
+            },
+            resolve: async (root, { email, password }) => {
+                const dbUser = await User.findOne({ email });
+
+                if (!dbUser) throw new Error(ErrorType.LOGIN_FAILED.name);
+
+                const { _id: id, password: passwordHash, salt, userName } = dbUser;
+
+                const pepper = process.env.PEPPER_STRING;
+                const isTokenValid = await bcrypt.compare(salt + password + pepper, passwordHash);
+
+                if (isTokenValid) {
+                    try {
+                        const signedToken = jwt.sign({ id, email, userName }, String(process.env.JWT_SECRET), { expiresIn: '2d' });
+                        
+                        return { token: signedToken };
+                    } catch (err) {
+                        throw new Error(ErrorType.SERVER_ERROR.name);
+                    }
+                } else {
+                    throw new Error(ErrorType.LOGIN_FAILED.name);
+                }
+            }
+        }
+    }
 });
 
 export const UserMutation: GraphQLObjectType<any, any> = new GraphQLObjectType({
@@ -51,7 +70,7 @@ export const UserMutation: GraphQLObjectType<any, any> = new GraphQLObjectType({
             },
             resolve: async (root, { userName, email, password }) => {
                 if (userName && email && password) {
-                    const dbUser = await User.findOne({ email: email, userName: userName });
+                    const dbUser = await User.findOne({$or:[{ email: email, userName: userName }]});
 
                     if (dbUser) throw new Error(ErrorType.USER_EXISTS.name);
 
@@ -61,9 +80,10 @@ export const UserMutation: GraphQLObjectType<any, any> = new GraphQLObjectType({
 
                     try {
                         const newUser = await new User({
-                            userName: userName,
-                            email: email,
-                            password: passwordHash
+                            userName,
+                            email,
+                            password: passwordHash,
+                            salt
                         }).save();
 
                         
@@ -71,13 +91,13 @@ export const UserMutation: GraphQLObjectType<any, any> = new GraphQLObjectType({
                             id: newUser._id,
                             email: newUser.email,
                             userName: newUser.userName
-                        },
+                        }, 
                         String(process.env.JWT_SECRET),
                         {
-                            expiresIn: '2d',
+                            expiresIn: '2d'
                         });
                         
-                        return {token: signedToken};
+                        return { token: signedToken };
                     } catch (error) {
                         throw new Error(ErrorType.DB_INSERT.name);
                     }

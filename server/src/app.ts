@@ -5,7 +5,7 @@ import { graphqlHTTP } from 'express-graphql';
 import { GraphQLError } from 'graphql';
 
 import RootSchema from './model/GraphQL/Schema';
-import { findError, IError } from './model/GraphQL/Errors';
+import { findError, IError, ErrorType } from './model/GraphQL/Errors';
 
 dotenv.config();
 const app: express.Express = express();
@@ -18,7 +18,7 @@ app.use('/graphql', graphqlHTTP({
     graphiql: true,
     customFormatErrorFn: (err: GraphQLError): any => {
         const error: IError | undefined = findError(err.message);
-        if (error) {
+        if (error && err.message !== ErrorType.SERVER_ERROR.name) {
             return ({ message: error.message, statusCode: error.status });
         } else {
             return ({ message: err.message, statusCode: 501 });

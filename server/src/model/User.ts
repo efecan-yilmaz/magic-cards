@@ -4,6 +4,7 @@ export interface IUser {
     userName: string;
     password: string;
     email: string;
+    salt: string;
 }
 
 const userSchema = new mongoose.Schema<IUser>({
@@ -16,6 +17,10 @@ const userSchema = new mongoose.Schema<IUser>({
         required: true
     },
     email: {
+        type: String,
+        required: true
+    },
+    salt: {
         type: String,
         required: true
     }
