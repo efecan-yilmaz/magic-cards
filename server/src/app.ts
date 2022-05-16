@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import mongoose from 'mongoose';
+import cors from 'cors';
 import { graphqlHTTP } from 'express-graphql';
 import { GraphQLError } from 'graphql';
 
@@ -9,6 +10,8 @@ import { findError, IError, ErrorType } from './model/GraphQL/Errors';
 
 dotenv.config();
 const app: express.Express = express();
+
+app.use(cors());
 
 app.listen(8080);
 

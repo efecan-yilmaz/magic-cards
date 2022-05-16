@@ -70,7 +70,7 @@ export const UserMutation: GraphQLObjectType<any, any> = new GraphQLObjectType({
             },
             resolve: async (root, { userName, email, password }) => {
                 if (userName && email && password) {
-                    const dbUser = await User.findOne({$or:[{ email: email, userName: userName }]});
+                    const dbUser = await User.findOne({$or:[{ email: email }, { userName: userName }]});
 
                     if (dbUser) throw new Error(ErrorType.USER_EXISTS.name);
 
